@@ -12,7 +12,7 @@ import (
 
 // run a simple http server to receive tex files and return compiled file
 func main() {
-	staticdir := "/var/www/"
+	staticdir := "/var/www/html"
 
 	// serve a simple form to upload a .tex file
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
