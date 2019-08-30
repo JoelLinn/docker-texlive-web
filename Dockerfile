@@ -15,6 +15,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
 # copy app files
 COPY --from=bob /app/pdflatex-web /usr/local/bin/
 ADD index.html /var/www/html/
+EXPOSE 8080
 
 RUN useradd --create-home --shell /usr/sbin/nologin pdflatex-web
 USER pdflatex-web
