@@ -22,25 +22,32 @@ func main() {
 
 	// try to compile the tex file
 	http.HandleFunc("/pdflatex", func(w http.ResponseWriter, r *http.Request) {
-		err := r.ParseMultipartForm(1024 * 1024 * 512)
-		if err != nil {
-			log.Println("Error parsing multipart form: " + err.Error())
-			w.WriteHeader(400)
-			return
-		}
+		var texh io.Reader // handler to uploaded tex file
 
-		// was a file sent?
-		texs, exist := r.MultipartForm.File["tex"]
-		if !exist {
-			log.Println("No file was sent.")
-			w.WriteHeader(400)
-			return
-		}
-		texh, err := texs[0].Open()
-		if err != nil {
-			log.Println("Error opening file. " + err.Error())
-			w.WriteHeader(500)
-			return
+		ctype, exist := r.Header["Content-Type"]
+		if exist && (ctype[0] == "application/x-tex" || ctype[0] == "text/x-tex") {
+			texh = r.Body
+		} else {
+			err := r.ParseMultipartForm(1024 * 1024 * 512)
+			if err != nil {
+				log.Println("Error parsing multipart form: " + err.Error())
+				w.WriteHeader(400)
+				return
+			}
+
+			// was a file sent?
+			texs, exist := r.MultipartForm.File["tex"]
+			if !exist {
+				log.Println("No file was sent.")
+				w.WriteHeader(400)
+				return
+			}
+			texh, err = texs[0].Open()
+			if err != nil {
+				log.Println("Error opening file. " + err.Error())
+				w.WriteHeader(500)
+				return
+			}
 		}
 
 		// create temp dir
@@ -60,7 +67,7 @@ func main() {
 			w.WriteHeader(500)
 			return
 		}
-		if written, err := io.Copy(tmpf, texh); err != nil || written != texs[0].Size {
+		if _, err := io.Copy(tmpf, texh); err != nil {
 			log.Println("Could not save file. " + err.Error())
 			w.WriteHeader(500)
 			return
