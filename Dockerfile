@@ -17,6 +17,8 @@ COPY --from=bob /app/pdflatex-web /usr/local/bin/
 ADD index.html /var/www/html/
 EXPOSE 8080
 
+ENV TEXLIVE_WEB_TEX_TIMEOUT_MS 30000
+
 RUN useradd --create-home --shell /usr/sbin/nologin pdflatex-web
 USER pdflatex-web
 WORKDIR /home/pdflatex-web

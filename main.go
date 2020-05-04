@@ -8,11 +8,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"time"
 )
 
 // run a simple http server to receive tex files and return compiled file
 func main() {
 	staticdir := "/var/www/html"
+
+	tex_timeout := func() time.Duration {
+		tex_timeout_ms, err := strconv.ParseUint(os.Getenv("TEXLIVE_WEB_TEX_TIMEOUT_MS"), 10, 32)
+		_ = err
+		return time.Duration(tex_timeout_ms) * time.Millisecond
+	}()
 
 	// serve a simple form to upload a .tex file
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +92,25 @@ func main() {
 		}
 		for i := 0; i < 2; i++ { // tex needs two passes to resolve references
 			pdflatex := exec.Command("pdflatex", "-interaction=nonstopmode", "upload.tex")
-			if err := pdflatex.Run(); err != nil {
+			log.Println("Starting compilation.")
+			if err := pdflatex.Start(); err != nil {
+				log.Println("Error starting pdflatex: " + err.Error())
+				w.WriteHeader(500)
+				return
+			}
+
+			var timer *time.Timer = nil
+			if tex_timeout > 0 {
+				timer = time.AfterFunc(tex_timeout, func() {
+					log.Println("Compilation timeout.")
+					pdflatex.Process.Kill()
+				})
+			}
+			err := pdflatex.Wait()
+			if timer != nil {
+				timer.Stop()
+			}
+			if err != nil {
 				log.Println("Could not compile the tex file. " + err.Error())
 				w.WriteHeader(500)
 				return
@@ -102,5 +128,7 @@ func main() {
 		log.Println("Serving compiled pdf")
 		http.ServeFile(w, r, pdffn)
 	})
+
+	log.Println("Listening on port 8080...")
 	http.ListenAndServe(":8080", nil)
 }
