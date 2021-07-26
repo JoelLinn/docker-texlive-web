@@ -1,6 +1,7 @@
 FROM golang:buster as bob
 WORKDIR /app
 ADD main.go .
+ENV GO111MODULE=auto
 RUN go build -o pdflatex-web
 
 
